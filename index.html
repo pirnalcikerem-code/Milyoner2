@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Kim Milyoner Olmak İster</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{
+ margin:0;
+ font-family:Arial;
+ background:#0b0d27;
+ color:#fff;
+ text-align:center;
+}
+.container{
+ max-width:900px;
+ margin:auto;
+ padding:20px;
+}
+#timer{
+ font-size:32px;
+ color:#ffd700;
+ margin-bottom:10px;
+}
+#question{
+ font-size:22px;
+ margin:15px 0;
+}
+.answers button{
+ width:100%;
+ margin:6px 0;
+ padding:12px;
+ font-size:16px;
+ background:#2d2f55;
+ color:#fff;
+ border:none;
+ border-radius:8px;
+ cursor:pointer;
+}
+.answers button:hover{
+ background:#3a3d70;
+}
+.correct{background:#00a84f!important}
+.wrong{background:#d62828!important}
+.waiting{background:#f1c40f!important;color:#000!important}
+
+#jokers button{
+ margin:4px;
+ padding:6px 10px;
+ font-size:12px;
+ cursor:pointer;
+}
+
+.moneyBoard{
+ margin-top:25px;
+ background:#11143a;
+ padding:15px;
+ border-radius:10px;
+}
+
+.money-step{
+ padding:8px;
+ margin:4px 0;
+ border-radius:6px;
+}
+
+.money-step.active{
+ background:#ffd700;
+ color:#000;
+ font-weight:bold;
+}
+
+.money-step.passed{
+ background:#00a84f;
+ color:#000;
+}
+
+/* Bildirim */
+#notify{
+ position:fixed;
+ top:-120px;
+ left:50%;
+ transform:translateX(-50%);
+ background:#ffd700;
+ color:#000;
+ padding:15px 30px;
+ border-radius:10px;
+ font-weight:bold;
+ font-size:18px;
+ transition:top 0.6s ease;
+ z-index:9999;
+ white-space:pre-line;
+}
+
+#notify.show{
+ top:30px;
+}
+
+#notify.success{
+ background:#00a84f;
+ color:#000;
+}
+
+#notify.fail{
+ background:#d62828;
+ color:#fff;
+}
+</style>
+</head>
+
+<body>
+
+<div id="notify"></div>
+
+<div id="startScreen" style="margin-top:150px">
+<h1>Kim Milyoner Olmak İster</h1>
+<button onclick="startGame()" style="padding:15px 30px;font-size:18px">
+BAŞLA
+</button>
+</div>
+
+<div id="gameScreen" style="display:none">
+<div class="container">
+
+<div id="timer">45</div>
+<div id="question"></div>
+<div class="answers" id="answers"></div>
+
+<div id="jokers">
+<button id="btn5050" onclick="joker5050()">50:50</button>
+<button id="btnAudience" onclick="jokerAudience()">Seyirci</button>
+<button id="btnPhone" onclick="jokerPhone()">Telefon</button>
+<button id="btnTime" onclick="jokerTime()">+15sn</button>
+</div>
+
+<div class="moneyBoard" id="money"></div>
+
+</div>
+</div>
+
+<script>
+// 100 soruluk örnek havuz (mantık aynı, full 100 eklenebilir)
+const pool=[
+{q:"Türkiye'nin başkenti neresidir?",a:["İstanbul","Ankara","İzmir","Bursa"],c:1},
+{q:"Dünyanın en büyük okyanusu hangisidir?",a:["Atlas","Hint","Büyük Okyanus","Arktik"],c:2},
+{q:"Atatürk'ün doğum yılı kaçtır?",a:["1878","1879","1880","1881"],c:3},
+{q:"İnsan vücudunda kaç kemik vardır?",a:["206","208","210","212"],c:0},
+{q:"En uzun nehir hangisidir?",a:["Nil","Amazon","Mississippi","Yangtze"],c:1},
+{q:"Hangi gezegen Kızıl Gezegen olarak bilinir?",a:["Venüs","Mars","Jüpiter","Satürn"],c:1},
+{q:"İstiklal Marşı'nın yazarı kimdir?",a:["Namık Kemal","Mehmet Akif Ersoy","Tevfik Fikret","Yahya Kemal"],c:1},
+{q:"Türkiye Cumhuriyeti ne zaman ilan edilmiştir?",a:["1920","1921","1922","1923"],c:3},
+{q:"Osmanlı Devleti'nin kurucusu kimdir?",a:["Orhan Gazi","Osman Gazi","Fatih Sultan Mehmet","Yıldırım Bayezid"],c:1},
+{q:"İnsan vücudunda en büyük organ hangisidir?",a:["Kalp","Karaciğer","Deri","Akciğer"],c:2},
+{q:"Dünyanın en yüksek dağı hangisidir?",a:["Everest","K2","Kanchenjunga","Lhotse"],c:0},
+{q:"Hangi hayvan memeli değildir?",a:["Yarasa","Yunus","Balık","Penguen"],c:2},
+{q:"Türkiye kaç coğrafi bölgeye sahiptir?",a:["5","6","7","8"],c:2},
+{q:"Dünya'nın en uzun nehri hangisidir?",a:["Nil","Amazon","Yangtze","Mississippi"],c:1},
+{q:"İlk yazıyı hangi uygarlık bulmuştur?",a:["Sümerler","Hititler","Mısırlılar","Fenikeliler"],c:0},
+{q:"En küçük asal sayı hangisidir?",a:["0","1","2","3"],c:2},
+{q:"Türkiye'nin resmi dili nedir?",a:["Türkçe","Kürtçe","Arapça","İngilizce"],c:0},
+{q:"Bir üçgenin iç açıları toplamı kaç derecedir?",a:["90","180","270","360"],c:1},
+{q:"Bir litre kaç mililitredir?",a:["10","100","1000","10000"],c:2},
+{q:"Türkiye'nin para birimi nedir?",a:["Euro","Dolar","Lira","Sterlin"],c:2},
+{q:"Hangi renk ana renktir?",a:["Kırmızı","Yeşil","Mavi","Sarı"],c:0},
+{q:"Türkiye'nin en kalabalık şehri hangisidir?",a:["Ankara","İstanbul","İzmir","Bursa"],c:1},
+{q:"Hangisi bir enerji kaynağıdır?",a:["Rüzgar","Su","Güneş","Kömür"],c:2},
+{q:"Ay'ın Dünya etrafındaki dönüş süresi kaç gündür?",a:["27","30","28","31"],c:0},
+{q:"Hangi hayvan uçamaz?",a:["Yarasa","Serçe","Penguen","Kartal"],c:2},
+{q:"Bir haftada kaç gün vardır?",a:["5","6","7","8"],c:2},
+{q:"Dünyanın en kalabalık ülkesi hangisidir?",a:["ABD","Hindistan","Çin","Rusya"],c:2},
+{q:"Bir yılda kaç ay vardır?",a:["10","11","12","13"],c:2},
+{q:"Türkiye'nin milli içeceği olarak bilinen nedir?",a:["Ayran","Çay","Kahve","Gazoz"],c:0},
+{q:"Hangisi bir ulaşım aracıdır?",a:["Kalem","Gemi","Defter","Bisiklet"],c:1},
+{q:"İlk insanlı aya iniş hangi yılda oldu?",a:["1965","1969","1972","1975"],c:1},
+{q:"Hangisi bir müzik aletidir?",a:["Keman","Fırça","Defter","Davul"],c:0},
+{q:"Hangisi bir hayvan değildir?",a:["Kedi","Köpek","Masa","At"],c:2},
+{q:"Bir saatte kaç saniye vardır?",a:["360","600","3600","7200"],c:2},
+{q:"Kan grubunu belirleyen sistem hangisidir?",a:["ABO","XYZ","QRS","ABC"],c:0},
+{q:"Bir dikdörtgenin karşılıklı kenarları nasıldır?",a:["Eşit","Farklı","Yuvarlak","Kısa"],c:0},
+{q:"Türkiye NATO'ya kaç yılında katılmıştır?",a:["1950","1952","1960","1945"],c:0},
+{q:"Elektron negatif midir?",a:["Evet","Hayır","Bazen","Bilinmez"],c:0},
+{q:"Fotosentez hangi canlılarda gerçekleşir?",a:["Hayvanlar","Bitkiler","Mantarlar","Bitkiler ve Algler"],c:3},
+{q:"Türkiye hangi yarımkürededir?",a:["Güney","Kuzey","Batı","Doğu"],c:1},
+{q:"İnsan kalbi kaç odacıklıdır?",a:["2","3","4","5"],c:2},
+{q:"En hızlı kara hayvanı hangisidir?",a:["At","Geyik","Çita","Aslan"],c:2},
+{q:"Türkiye'nin en büyük gölü hangisidir?",a:["Van","Tuz","Beyşehir","Sapanca"],c:1},
+{q:"Dünyanın şekli nasıldır?",a:["Düz","Küreye yakın","Kare","Üçgen"],c:1},
+{q:"Hangi gezegen en büyüktür?",a:["Mars","Dünya","Jüpiter","Satürn"],c:2},
+{q:"Türkiye'nin komşusu olmayan ülke hangisidir?",a:["Yunanistan","Bulgaristan","İran","Almanya"],c:3},
+{q:"Bir litre kaç mililitre?",a:["100","1000","500","50"],c:1},
+{q:"Hangisi bir sebzedir?",a:["Elma","Muz","Domates","Çilek"],c:2},
+{q:"Hangisi bir kıta değildir?",a:["Asya","Afrika","Avrupa","Grönland"],c:3},
+{q:"Bir düzinede kaç tane vardır?",a:["10","11","12","13"],c:2},
+{q:"Hangi organ kanı temizler?",a:["Kalp","Böbrek","Akciğer","Mide"],c:1},
+{q:"Hangisi bir hayvandır?",a:["Kedi","Masa","Köpek","At"],c:0}
+];
+
+// Para merdiveni
+const moneySteps=[
+"10.000",
+"20.000",
+"25.000",
+"50.000",
+"100.000",
+"250.000",
+"500.000",
+"750.000",
+"1.000.000"
+];
+
+let questions=[];
+let current=0;
+let time=45;
+let timer;
+
+let used5050=false;
+let usedAudience=false;
+let usedPhone=false;
+let usedTime=false;
+
+const startScreen=document.getElementById("startScreen");
+const gameScreen=document.getElementById("gameScreen");
+const qEl=document.getElementById("question");
+const aEl=document.getElementById("answers");
+const tEl=document.getElementById("timer");
+const mEl=document.getElementById("money");
+const notify=document.getElementById("notify");
+
+function showNotify(text,type){
+ notify.textContent=text;
+ notify.className="";
+ notify.classList.add("show");
+ if(type==="success") notify.classList.add("success");
+ if(type==="fail") notify.classList.add("fail");
+ setTimeout(()=>notify.classList.remove("show"),3000);
+}
+
+function startGame(){
+ startScreen.style.display="none";
+ gameScreen.style.display="block";
+ questions=[...pool].sort(()=>Math.random()-0.5); // Rastgele sıraya sok
+ current=0;
+
+ used5050=false;
+ usedAudience=false;
+ usedPhone=false;
+ usedTime=false;
+
+ document.querySelectorAll("#jokers button").forEach(b=>{
+  b.disabled=false;
+  b.style.opacity="1";
+ });
+
+ loadQuestion();
+}
+
+function resetGame(){
+ clearInterval(timer);
+ gameScreen.style.display="none";
+ startScreen.style.display="block";
+}
+
+function renderMoney(){
+ mEl.innerHTML="";
+ moneySteps.forEach((m,i)=>{
+  let d=document.createElement("div");
+  d.textContent=m+" TL";
+  d.className="money-step";
+  if(i<current)d.classList.add("passed");
+  if(i===current)d.classList.add("active");
+  mEl.appendChild(d);
+ });
+}
+
+function startTimer(){
+ clearInterval(timer);
+ time=45;
+ tEl.textContent=time;
+ timer=setInterval(()=>{
+  time--;
+  tEl.textContent=time;
+  if(time<=0){
+   showNotify("SÜRE BİTTİ! ELENDİNİZ!", "fail");
+   setTimeout(resetGame,2000);
+  }
+ },1000);
+}
+
+function loadQuestion(){
+ renderMoney();
+ aEl.innerHTML="";
+ qEl.textContent=questions[current].q;
+
+ // Şıkları rastgele sırala
+ let arr=questions[current].a.map((t,i)=>({t,i}));
+ arr.sort(()=>Math.random()-0.5);
+
+ arr.forEach(obj=>{
+  let btn=document.createElement("button");
+  btn.textContent=obj.t;
+  btn.onclick=()=>answer(obj.i===questions[current].c,btn);
+  aEl.appendChild(btn);
+ });
+
+ startTimer();
+}
+
+function answer(correct,btn){
+ clearInterval(timer);
+ document.querySelectorAll(".answers button").forEach(b=>b.disabled=true);
+ btn.classList.add("waiting");
+
+ setTimeout(()=>{
+  btn.classList.remove("waiting");
+
+  if(correct){
+   btn.classList.add("correct");
+   setTimeout(()=>{
+    current++;
+    if(current>=moneySteps.length){
+     showNotify("TEBRİKLER! 1.000.000 TL KAZANDIN!", "success");
+     setTimeout(resetGame,2500);
+    } else{
+     loadQuestion();
+    }
+   },1500);
+  }else{
+   btn.classList.add("wrong");
+   document.querySelectorAll(".answers button")[questions[current].c]
+    .classList.add("correct");
+   showNotify("MAALESEF ELENDİNİZ!", "fail");
+   setTimeout(resetGame,2000);
+  }
+
+ },2000);
+}
+
+/* 50:50 */
+function joker5050(){
+ if(used5050) return;
+ used5050=true;
+ btn5050.disabled=true;
+ btn5050.style.opacity="0.5";
+
+ const correct=questions[current].c;
+ let wrong=[0,1,2,3].filter(i=>i!==correct);
+ wrong.sort(()=>Math.random()-0.5);
+
+ for(let i=0;i<2;i++){
+  document.querySelectorAll(".answers button")[wrong[i]].style.display="none";
+ }
+
+ showNotify("50:50 kullanıldı!", "success");
+}
+
+/* Seyirci */
+function jokerAudience(){
+ if(usedAudience) return;
+ usedAudience=true;
+ btnAudience.disabled=true;
+ btnAudience.style.opacity="0.5";
+
+ const correct=questions[current].c;
+ let percentages=[0,0,0,0];
+ percentages[correct]=70;
+
+ let remaining=30;
+ let others=[0,1,2,3].filter(i=>i!==correct);
+
+ others.forEach((i,index)=>{
+  if(index===others.length-1){
+   percentages[i]=remaining;
+  }else{
+   let rand=Math.floor(Math.random()*(remaining-5))+5;
+   percentages[i]=rand;
+   remaining-=rand;
+  }
+ });
+
+ let letters=["A","B","C","D"];
+ let result="";
+ for(let i=0;i<4;i++){
+  result+=`%${percentages[i]} ${letters[i]}\n`;
+ }
+
+ showNotify(result,"success");
+}
+
+/* Telefon */
+function jokerPhone(){
+ if(usedPhone) return;
+ usedPhone=true;
+ btnPhone.disabled=true;
+ btnPhone.style.opacity="0.5";
+
+ const correct=questions[current].c;
+ let guess;
+
+ if(Math.random()<0.8){
+  guess=correct;
+ }else{
+  let wrong=[0,1,2,3].filter(i=>i!==correct);
+  guess=wrong[Math.floor(Math.random()*wrong.length)];
+ }
+
+ let letters=["A","B","C","D"];
+ showNotify("Telefon tahmini: "+letters[guess],"success");
+}
+
+/* +15sn */
+function jokerTime(){
+ if(usedTime) return;
+
+ if(time>30){
+   showNotify("Süre jokeri sadece 30 saniye veya daha az kaldığında kullanılabilir!", "fail");
+   return;
+ }
+
+ usedTime=true;
+ btnTime.disabled=true;
+ btnTime.style.opacity="0.5";
+
+ time+=15;
+ tEl.textContent=time;
+ showNotify("+15 saniye eklendi!", "success");
+}
+
+</script>
+</body>
+</html>
